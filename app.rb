@@ -3,8 +3,8 @@ require 'sinatra/flash'
 require_relative 'lib/wordguesser_game'
 
 class WordGuesserApp < Sinatra::Base
-  enable :sessions
-  register Sinatra::Flash
+  enable :sessions # to support sessions to preserve game object across http requests
+  register Sinatra::Flash # helps us preserve message to next requests (e.g. here is /show)
 
   set :host_authorization, { permitted_hosts: [] }  
 
@@ -38,29 +38,53 @@ class WordGuesserApp < Sinatra::Base
   # Use existing methods in WordGuesserGame to process a guess.
   # If a guess is repeated, set flash[:message] to "You have already used that letter."
   # If a guess is invalid, set flash[:message] to "Invalid guess."
-  post '/guess' do
-    params[:guess].to_s[0]
-    ### YOUR CODE HERE ###
+  post '/guess' do # start of the /guess routes (aka controller)
+    letter = params[:guess].to_s[0]
+    
+    begin
+      new_guess = @game.guess(letter) # true if accepted; false if already used
+      flash[:message] = "You have already used that letter." unless new_guess
+    rescue ArgumentError
+      flash[:message] = "Invalid guess."
+    end
+
     redirect '/show'
-  end
+
+  end # end of the /guess routes (aka controller)
 
   # Everytime a guess is made, we should eventually end up at this route.
   # Use existing methods in WordGuesserGame to check if player has
   # won, lost, or neither, and take the appropriate action.
   # Notice that the show.erb template expects to use the instance variables
   # wrong_guesses and word_with_guesses from @game.
-  get '/show' do
-    ### YOUR CODE HERE ###
-    erb :show # You may change/remove this line
-  end
+  get '/show' do # start of the /show route (aka controller)
+    case @game.check_win_or_lose
+    when :win
+      redirect '/win'
+    when :lose
+      redirect '/lose'
+    else
+      erb :show
+    end # end of case expression
 
-  get '/win' do
-    ### YOUR CODE HERE ###
-    erb :win # You may change/remove this line
-  end
+  end # start of the /show route (aka controller)
 
-  get '/lose' do
-    ### YOUR CODE HERE ###
-    erb :lose # You may change/remove this line
-  end
+  get '/win' do # start of the /win route (aka controller)
+    if @game.check_win_or_lose == :win
+      erb :win
+    else
+      redirect '/show'
+    end
+  end # end of the /win route (aka controller)
+
+  get '/lose' do # start of the /lose route (aka controller)
+    if @game.check_win_or_lose == :lose
+      erb :lose
+    else
+      redirect '/show'
+    end
+  end # end of the /lose route (aka controller)
+
 end
+
+
